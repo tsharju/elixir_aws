@@ -24,6 +24,8 @@ defmodule Aws.Services do
         
         service_name = spec["metadata"]["serviceFullName"]
         api_version = spec["metadata"]["apiVersion"]
+        endpoint_prefix = spec["metadata"]["endpointPrefix"]
+        protocol = spec["metadata"]["protocol"]
 
         @moduledoc ~s(#{service_name}\n\nAPI version: #{api_version})
 
@@ -49,11 +51,10 @@ defmodule Aws.Services do
             def unquote(fun_name)(unquote_splicing(args)) do
               args = binding()
               op_spec = unquote(Macro.escape(operation_spec))
-              Aws.Http.request(args, op_spec)
+              unquote(protocol)
             end
           end)
-      end
-      _ ->
+        end
     end)
   
 end

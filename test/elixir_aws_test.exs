@@ -16,10 +16,10 @@ defmodule AwsTest do
 
   test "Service endpoint config." do
     endpoint = Aws.Endpoints.get("us-east-1", :ec2)
-    assert endpoint["uri"] == "{scheme}://{service}.{region}.amazonaws.com"
+    assert endpoint.uri == "https://ec2.us-east-1.amazonaws.com"
     
     endpoint = Aws.Endpoints.get("cn-north-1", :iam)
-    assert endpoint["uri"] == "https://{service}.cn-north-1.amazonaws.com.cn"
+    assert endpoint.uri == "https://iam.cn-north-1.amazonaws.com.cn"
   end
   
 end

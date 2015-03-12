@@ -1,6 +1,6 @@
 defmodule Aws.Http do
 
-  def request(args, spec) do
+  def request(protocol, endpoint_prefix, args, spec, output) do
     
   end
   
