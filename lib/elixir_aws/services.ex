@@ -22,6 +22,11 @@ defmodule Aws.Services do
         spec = File.read!(Path.join(mod_spec_path, mod_spec_file))
         |> Poison.decode!
         
+        service_name = spec["metadata"]["serviceFullName"]
+        api_version = spec["metadata"]["apiVersion"]
+
+        @moduledoc ~s(#{service_name}\n\nAPI version: #{api_version})
+
         # declare module functions according to the loaded spec
         Enum.each(spec["operations"],
           fn {operation_name, operation_spec} ->
