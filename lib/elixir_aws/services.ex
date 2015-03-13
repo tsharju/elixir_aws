@@ -18,8 +18,10 @@ defmodule Aws.Services do
           fn name -> String.contains?(name, "normal.json") end)
         |> Enum.sort
         |> List.first
+
+        @external_resource mod_spec_path = Path.join(mod_spec_path, mod_spec_file)
         
-        spec = File.read!(Path.join(mod_spec_path, mod_spec_file))
+        spec = File.read!(mod_spec_path)
         |> Poison.decode!(keys: :atoms)
         
         service_name = spec.metadata.serviceFullName
