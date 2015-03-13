@@ -21,5 +21,16 @@ defmodule AwsTest do
     endpoint = Aws.Endpoints.get("cn-north-1", :iam)
     assert endpoint.uri == "https://iam.cn-north-1.amazonaws.com.cn"
   end
+
+  test "Shape expand." do
+    spec = File.read!("priv/aws/s3/2006-03-01.normal.json")
+    |> Poison.decode!(keys: :atoms)
+
+    shape = Aws.Shape.expand(:'AbortMultipartUploadRequest', spec[:shapes])
+    assert shape.type == "structure"
+    assert shape.members[:Bucket].shape.type == "string"
+    assert shape.members[:Key].shape.type == "string"
+    assert shape.members[:UploadId].shape.type == "string"
+  end
   
 end
