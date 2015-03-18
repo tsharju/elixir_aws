@@ -44,6 +44,18 @@ defmodule AwsTest do
     string_to_sign = Signature.V4.string_to_sign("us-east-1", "s3", http_method, uri, headers, payload)
     
     assert string_to_sign != nil # TODO: mock :os.timestamp so we can assert this
+
+    home = System.get_env("HOME")
+
+    # mock home dir to test
+    System.put_env("HOME", Path.join(System.cwd!, "test"))
+    
+    signature = Signature.V4.sign("us-east-1", "s3", http_method, uri, headers, payload)
+
+    assert signature != {:error, :no_secret_key_found}
+
+    # bring back home
+    System.put_env("HOME", home)
   end
 
   test "Canonical header string" do
@@ -74,6 +86,40 @@ defmodule AwsTest do
     hash = Signature.V4.digest(canonical_request)
     
     assert hash == "3511de7e95d28ecd39e9513b642aee07e54f4941150d8df8bf94b328ef7e55e2"
+  end
+
+  test "Load configs from env" do
+    System.put_env("AWS_ACCESS_KEY_ID", "KEY_FROM_ENV")
+    System.put_env("AWS_SECRET_ACCESS_KEY", "SECRET_FROM_ENV")
+    System.put_env("AWS_DEFAULT_REGION", "REGION_FROM_ENV")
+
+    configs = Aws.Config.get()
+
+    assert configs != %Aws.Config.Configs{}
+    assert configs.key == "KEY_FROM_ENV"
+    assert configs.secret == "SECRET_FROM_ENV"
+    assert configs.region == "REGION_FROM_ENV"
+
+    System.delete_env("AWS_ACCESS_KEY_ID")
+    System.delete_env("AWS_SECRET_ACCESS_KEY")
+    System.delete_env("AWS_DEFAULT_REGION")
+  end
+  
+  test "Load AWS CLI configs" do
+    home = System.get_env("HOME")
+
+    # mock home dir to test
+    System.put_env("HOME", Path.join(System.cwd!, "test"))
+
+    configs = Aws.Config.get()
+
+    assert configs != %Aws.Config.Configs{}
+    assert configs.key == "AWS_ACCESS_KEY_ID"
+    assert configs.secret == "AWS_SECRET_ACCESS_KEY"
+    assert configs.region == "us-east-1"
+
+    # bring back home
+    System.put_env("HOME", home)
   end
   
 end
