@@ -42,6 +42,7 @@ defmodule Aws.Auth.Signature.V4 do
       |> hmac_sha256("aws4_request")
 
       headers = List.keystore(request.headers, "x-amz-date", 0, {"x-amz-date", datetime})
+      |> List.keystore("x-amz-content-sha256", 0, {"x-amz-content-sha256", sha256(request.payload) |> hexdigest})
       request = %{request | :headers => headers}
       {signed_headers, cr_string} = canonical_request(request)
 

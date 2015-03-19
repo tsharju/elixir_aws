@@ -6,17 +6,20 @@ defmodule Aws.Http do
   end
   
   def request(protocol, endpoint_prefix, api_version, signature_version, args, spec) do
+    IO.inspect binding()
+    
     configs = Aws.Config.get()
     endpoint = Aws.Endpoints.get(configs.region, endpoint_prefix)
     uri = URI.parse(endpoint.uri)
-    uri = %{uri | :path => spec.http.requestUri}
+    uri = %{uri | :path => spec.http.requestUri |> render_uri_template(args)}
     
-    req = %Request{:method => spec.http.method, :uri => uri,
-                   :headers => [{"Host", uri.host},
-                                {"x-amz-content-sha256", Aws.Auth.Signature.V4.digest("")}]}
+    req = %Request
+    {
+        :method => spec.http.method,
+        :uri => uri,
+        :headers => [{"Host", uri.host}]
+    }
     {:ok, req} =  Aws.Auth.Signature.V4.sign(req, configs.region, endpoint_prefix)
-
-    IO.inspect req
     
     {:ok, status, _, ref} = :hackney.request(method(req.method), to_string(req.uri), req.headers, "", [])
     :hackney.body(ref)
