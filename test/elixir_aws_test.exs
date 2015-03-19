@@ -91,7 +91,8 @@ defmodule AwsTest do
     }
     
     {_headers, string} = Signature.V4.canonical_request(request)
-    hash = Signature.V4.digest(string)
+    hash = Aws.Auth.Utils.sha256(string)
+    |> Aws.Auth.Utils.hexdigest
     
     assert hash == "3511de7e95d28ecd39e9513b642aee07e54f4941150d8df8bf94b328ef7e55e2"
   end

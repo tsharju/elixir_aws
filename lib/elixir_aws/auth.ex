@@ -1,8 +1,36 @@
+defmodule Aws.Auth.Utils do
+
+  def hmac_sha256(key, data) do
+    :crypto.hmac(:sha256, key, data)
+  end
+  
+  def sha256(data) do
+    :crypto.hash(:sha256, data)
+  end
+
+  def hexdigest(data) do
+    :io_lib.format(
+      '~64.16.0b',
+      [:binary.decode_unsigned(data)])
+    |> List.to_string
+  end
+    
+  def iso_8601_date() do
+    {{year, month, day}, {hour, min, sec}} = :calendar.now_to_universal_time(:os.timestamp())
+    :lists.flatten(:io_lib.format('~4.10.0B~2.10.0B~2.10.0BT~2.10.0B~2.10.0B~2.10.0BZ',
+                                  [year, month, day, hour, min, sec]))
+    |> List.to_string
+  end
+  
+end
+
 defmodule Aws.Auth.Signature.V4 do
+
+  import Aws.Auth.Utils
 
   @spec sign(request :: Aws.Http.Request.t, region :: binary, service :: binary) :: Aws.Http.Request.t
   def sign(request, region, service) do
-    {_, datetime} = List.keyfind(request.headers, "x-amz-date", 0, {"x-amz-date", iso_8601(:datetime)})
+    {_, datetime} = List.keyfind(request.headers, "x-amz-date", 0, {"x-amz-date", iso_8601_date()})
     [date, _] = String.split(datetime, "T")
     configs = Aws.Config.get()
     secret = configs.secret
@@ -20,7 +48,7 @@ defmodule Aws.Auth.Signature.V4 do
       string_to_sign = string_to_sign(region, service, datetime, date, cr_string)
 
       signature = hmac_sha256(signing_key, string_to_sign)
-      |> base64
+      |> hexdigest
       
       credential_scope = "#{date}/#{region}/#{service}/aws4_request"
       
@@ -33,13 +61,15 @@ defmodule Aws.Auth.Signature.V4 do
   end
   
   def string_to_sign(region, service, datetime, date, canonical_request) do
-    hash = digest(canonical_request)
+    hash = sha256(canonical_request)
+    |> hexdigest
     "AWS4-HMAC-SHA256\n#{datetime}\n#{date}/#{region}/#{service}/aws4_request\n#{hash}"
   end
 
   def canonical_request(request) do
     {signed_headers, canonical_headers} = canonical_headers(request.headers)
-    payload = digest(request.payload)
+    payload = sha256(request.payload)
+    |> hexdigest
     canonical_string =
       "#{request.method}\n#{request.uri.path}\n#{request.query}\n#{canonical_headers}\n#{signed_headers}\n#{payload}"
     {signed_headers, canonical_string}
@@ -56,38 +86,6 @@ defmodule Aws.Auth.Signature.V4 do
         {header, acc <> "#{header}:#{value}\n"}
       end)
     {Enum.join(signed_headers, ";"), canonical_headers}
-  end
-
-  def digest(data) do
-    :io_lib.format(
-      '~64.16.0b',
-      [:binary.decode_unsigned(:crypto.hash(:sha256, data))])
-    |> List.to_string
-  end
-
-  def base64(data) do
-    :io_lib.format(
-      '~64.16.0b',
-      [:binary.decode_unsigned(data)])
-    |> List.to_string
-  end
-  
-  def iso_8601(:datetime) do
-    {{year, month, day}, {hour, min, sec}} = :calendar.now_to_universal_time(:os.timestamp())
-    :lists.flatten(:io_lib.format('~4.10.0B~2.10.0B~2.10.0BT~2.10.0B~2.10.0B~2.10.0BZ',
-                                  [year, month, day, hour, min, sec]))
-    |> List.to_string
-  end
-
-  def iso_8601(:date) do
-    {{year, month, day}, {_, _, _}} = :calendar.now_to_universal_time(:os.timestamp())
-    :lists.flatten(:io_lib.format('~4.10.0B~2.10.0B~2.10.0B',
-                                  [year, month, day]))
-    |> List.to_string
-  end
-
-  def hmac_sha256(key, data) do
-    :crypto.hmac(:sha256, key, data)
   end
   
 end
