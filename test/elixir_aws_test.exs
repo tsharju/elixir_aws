@@ -36,12 +36,18 @@ defmodule AwsTest do
   end
 
   test "Auth signature" do
-    http_method = "POST"
-    uri = "/"
-    headers = [{"Host", "iam.amazonaws.com"},
-               {"Content-Type", "application/x-www-form-urlencoded; charset=utf-8"}]
-    payload = "Action=ListUsers&Version=2010-05-08"
-    string_to_sign = Signature.V4.string_to_sign("us-east-1", "s3", http_method, uri, headers, payload)
+    request = %Aws.Http.Request
+    {
+        :method => "POST",
+        :uri => "/",
+        :headers => [{"Host", "iam.amazonaws.com"},
+                     {"Content-Type", "application/x-www-form-urlencoded; charset=utf-8"}],
+        :payload => "Action=ListUsers&Version=2010-05-08"
+    }
+
+    {_headers, string} = Signature.V4.canonical_request(request)
+    
+    string_to_sign = Signature.V4.string_to_sign("us-east-1", "s3", "20150101T000000", string)
     
     assert string_to_sign != nil # TODO: mock :os.timestamp so we can assert this
 
@@ -50,9 +56,9 @@ defmodule AwsTest do
     # mock home dir to test
     System.put_env("HOME", Path.join(System.cwd!, "test"))
     
-    signature = Signature.V4.sign("us-east-1", "s3", http_method, uri, headers, payload)
-
-    assert signature != {:error, :no_secret_key_found}
+    {:ok, request} = Signature.V4.sign("us-east-1", "s3", request)
+    
+    IO.inspect request
 
     # bring back home
     System.put_env("HOME", home)
@@ -75,15 +81,18 @@ defmodule AwsTest do
   end
 
   test "Canonical reguest" do
-    http_method = "POST"
-    uri = "/"
-    headers = [{"Host", "iam.amazonaws.com"},
-               {"Content-Type", "application/x-www-form-urlencoded; charset=utf-8"},
-               {"X-Amz-Date", "20110909T233600Z"}]
-    payload = "Action=ListUsers&Version=2010-05-08"
+    request = %Aws.Http.Request
+    {
+        :method => "POST",
+        :uri => "/",
+        :headers => [{"Host", "iam.amazonaws.com"},
+                     {"Content-Type", "application/x-www-form-urlencoded; charset=utf-8"},
+                     {"X-Amz-Date", "20110909T233600Z"}],
+        :payload => "Action=ListUsers&Version=2010-05-08"
+    }
     
-    canonical_request = Signature.V4.canonical_request(http_method, uri, headers, payload)
-    hash = Signature.V4.digest(canonical_request)
+    {_headers, string} = Signature.V4.canonical_request(request)
+    hash = Signature.V4.digest(string)
     
     assert hash == "3511de7e95d28ecd39e9513b642aee07e54f4941150d8df8bf94b328ef7e55e2"
   end

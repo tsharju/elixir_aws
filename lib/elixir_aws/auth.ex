@@ -1,6 +1,7 @@
 defmodule Aws.Auth.Signature.V4 do
 
-  def sign(region, service, http_method, uri, headers, payload, query \\ "") do
+  @spec sign(region :: binary, service :: binary, request :: Aws.Http.Request.t) :: Aws.Http.Request.t
+  def sign(region, service, request) do
     date = iso_8601(:date)
     configs = Aws.Config.get()
     secret = configs.secret
@@ -11,31 +12,36 @@ defmodule Aws.Auth.Signature.V4 do
       |> hmac_sha256(service)
       |> hmac_sha256("aws4_request")
       
-      string_to_sign = string_to_sign(region, service, http_method, uri, headers, payload, query)
+      request = %{request | :headers => [{"X-Amz-Date", date} | request.headers]}
+      {signed_headers, cr_string} = canonical_request(request)
+      string_to_sign = string_to_sign(region, service, iso_8601(:datetime), cr_string)
       |> digest
-
-      hmac_sha256(signing_key, string_to_sign)
+      
+      signature = hmac_sha256(signing_key, string_to_sign)
       |> digest
+      
+      credential_scope = "#{date}/#{region}/#{service}/aws4_request"
+      
+      auth_header = "AWS4-HMAC-SHA256 Credential=#{configs.secret}/#{credential_scope}, SignedHeaders=#{signed_headers}, Signature=#{signature}"
+      
+      {:ok, %{request | :headers => [{"Authorization", auth_header} | request.headers]}}
     else
       {:error, :no_secret_key_found}
     end
   end
   
-  def string_to_sign(region, service, http_method, uri, headers, payload, query \\ "") do    
-    datetime = iso_8601(:datetime)
+  def string_to_sign(region, service, datetime, canonical_request) do
     [date, _] = String.split(datetime, "T")
-    
-    headers = [{"X-Amz-Date", date} | headers]
-    cr_string = canonical_request(http_method, uri, headers, payload, query)
-    hash = digest(cr_string)
-    
+    hash = digest(canonical_request)
     "AWS4-HMAC-SHA256\n#{datetime}\n#{date}/#{region}/#{service}/aws4_request\n#{hash}"
   end
 
-  def canonical_request(http_method, uri, headers, payload, query \\ "") do
-    {signed_headers, canonical_headers} = canonical_headers(headers)
-    payload = digest(payload)
-    "#{http_method}\n#{uri}\n#{query}\n#{canonical_headers}\n#{signed_headers}\n#{payload}"
+  def canonical_request(request) do
+    {signed_headers, canonical_headers} = canonical_headers(request.headers)
+    payload = digest(request.payload)
+    canonical_string =
+      "#{request.method}\n#{request.uri}\n#{request.query}\n#{canonical_headers}\n#{signed_headers}\n#{payload}"
+    {signed_headers, canonical_string}
   end
   
   def canonical_headers(headers) do

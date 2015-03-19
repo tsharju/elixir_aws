@@ -1,6 +1,11 @@
 defmodule Aws.Http do
-
-  def request(protocol, endpoint_prefix, args, spec, output) do
+  
+  defmodule Request do
+    defstruct method: nil, uri: nil, headers: [], payload: nil, query: ""
+    @type t :: %Request{method: binary, uri: binary, headers: List.t, payload: binary, query: binary}
+  end
+  
+  def request(protocol, endpoint_prefix, api_version, signature_version, args, spec) do
     
   end
   
@@ -18,9 +23,8 @@ defmodule Aws.Http do
           argname = part
           safe = &URI.char_unreserved?(&1)
         end
-        
-        argname = Mix.Utils.underscore(argname)
-        |> String.to_atom
+
+        argname = String.to_atom(argname)
         
         Regex.replace(re, template, URI.encode(args[argname], safe))
       end)
