@@ -1,28 +1,30 @@
 defmodule Aws.Auth.Signature.V4 do
 
-  @spec sign(region :: binary, service :: binary, request :: Aws.Http.Request.t) :: Aws.Http.Request.t
-  def sign(region, service, request) do
-    date = iso_8601(:date)
+  @spec sign(request :: Aws.Http.Request.t, region :: binary, service :: binary) :: Aws.Http.Request.t
+  def sign(request, region, service) do
+    {_, datetime} = List.keyfind(request.headers, "x-amz-date", 0, {"x-amz-date", iso_8601(:datetime)})
+    [date, _] = String.split(datetime, "T")
     configs = Aws.Config.get()
     secret = configs.secret
-    
+
     if secret != nil do
       signing_key = hmac_sha256("AWS4" <> secret, date)
       |> hmac_sha256(region)
       |> hmac_sha256(service)
       |> hmac_sha256("aws4_request")
-      
-      request = %{request | :headers => [{"X-Amz-Date", date} | request.headers]}
+
+      headers = List.keystore(request.headers, "x-amz-date", 0, {"x-amz-date", datetime})
+      request = %{request | :headers => headers}
       {signed_headers, cr_string} = canonical_request(request)
-      string_to_sign = string_to_sign(region, service, iso_8601(:datetime), cr_string)
-      |> digest
-      
+
+      string_to_sign = string_to_sign(region, service, datetime, date, cr_string)
+
       signature = hmac_sha256(signing_key, string_to_sign)
-      |> digest
+      |> base64
       
       credential_scope = "#{date}/#{region}/#{service}/aws4_request"
       
-      auth_header = "AWS4-HMAC-SHA256 Credential=#{configs.secret}/#{credential_scope}, SignedHeaders=#{signed_headers}, Signature=#{signature}"
+      auth_header = "AWS4-HMAC-SHA256 Credential=#{configs.key}/#{credential_scope}, SignedHeaders=#{signed_headers}, Signature=#{signature}"
       
       {:ok, %{request | :headers => [{"Authorization", auth_header} | request.headers]}}
     else
@@ -30,8 +32,7 @@ defmodule Aws.Auth.Signature.V4 do
     end
   end
   
-  def string_to_sign(region, service, datetime, canonical_request) do
-    [date, _] = String.split(datetime, "T")
+  def string_to_sign(region, service, datetime, date, canonical_request) do
     hash = digest(canonical_request)
     "AWS4-HMAC-SHA256\n#{datetime}\n#{date}/#{region}/#{service}/aws4_request\n#{hash}"
   end
@@ -40,7 +41,7 @@ defmodule Aws.Auth.Signature.V4 do
     {signed_headers, canonical_headers} = canonical_headers(request.headers)
     payload = digest(request.payload)
     canonical_string =
-      "#{request.method}\n#{request.uri}\n#{request.query}\n#{canonical_headers}\n#{signed_headers}\n#{payload}"
+      "#{request.method}\n#{request.uri.path}\n#{request.query}\n#{canonical_headers}\n#{signed_headers}\n#{payload}"
     {signed_headers, canonical_string}
   end
   
@@ -58,10 +59,17 @@ defmodule Aws.Auth.Signature.V4 do
   end
 
   def digest(data) do
-    [digest] = :io_lib.format(
+    :io_lib.format(
       '~64.16.0b',
       [:binary.decode_unsigned(:crypto.hash(:sha256, data))])
-    List.to_string(digest)
+    |> List.to_string
+  end
+
+  def base64(data) do
+    :io_lib.format(
+      '~64.16.0b',
+      [:binary.decode_unsigned(data)])
+    |> List.to_string
   end
   
   def iso_8601(:datetime) do

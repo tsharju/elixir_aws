@@ -1,12 +1,25 @@
 defmodule Aws.Http do
   
   defmodule Request do
-    defstruct method: nil, uri: nil, headers: [], payload: nil, query: ""
-    @type t :: %Request{method: binary, uri: binary, headers: List.t, payload: binary, query: binary}
+    defstruct method: nil, uri: %URI{}, headers: [], payload: "", query: ""
+    @type t :: %Request{method: binary, uri: URI.t, headers: List.t, payload: binary, query: binary}
   end
   
   def request(protocol, endpoint_prefix, api_version, signature_version, args, spec) do
+    configs = Aws.Config.get()
+    endpoint = Aws.Endpoints.get(configs.region, endpoint_prefix)
+    uri = URI.parse(endpoint.uri)
+    uri = %{uri | :path => spec.http.requestUri}
     
+    req = %Request{:method => spec.http.method, :uri => uri,
+                   :headers => [{"Host", uri.host},
+                                {"x-amz-content-sha256", Aws.Auth.Signature.V4.digest("")}]}
+    {:ok, req} =  Aws.Auth.Signature.V4.sign(req, configs.region, endpoint_prefix)
+
+    IO.inspect req
+    
+    {:ok, status, _, ref} = :hackney.request(method(req.method), to_string(req.uri), req.headers, "", [])
+    :hackney.body(ref)
   end
   
   def render_uri_template(template, args) do
@@ -33,5 +46,11 @@ defmodule Aws.Http do
   defp unescaped?(chr) do
     URI.char_unreserved?(chr) or chr in '/~'
   end
+
+  defp method("GET"), do: :get
+  defp method("POST"), do: :post
+  defp method("PUT"), do: :put
+  defp method("DELETE"), do: :delete
+  defp method("HEAD"), do: :head
   
 end

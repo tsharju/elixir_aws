@@ -39,7 +39,7 @@ defmodule AwsTest do
     request = %Aws.Http.Request
     {
         :method => "POST",
-        :uri => "/",
+        :uri => %URI{:path => "/"},
         :headers => [{"Host", "iam.amazonaws.com"},
                      {"Content-Type", "application/x-www-form-urlencoded; charset=utf-8"}],
         :payload => "Action=ListUsers&Version=2010-05-08"
@@ -47,18 +47,17 @@ defmodule AwsTest do
 
     {_headers, string} = Signature.V4.canonical_request(request)
     
-    string_to_sign = Signature.V4.string_to_sign("us-east-1", "s3", "20150101T000000", string)
+    string_to_sign = Signature.V4.string_to_sign(
+      "us-east-1", "s3", "20110909T233600Z", "20110909", string)
     
-    assert string_to_sign != nil # TODO: mock :os.timestamp so we can assert this
+    assert string_to_sign == "AWS4-HMAC-SHA256\n20110909T233600Z\n20110909/us-east-1/s3/aws4_request\n2098121695415a5bdb2d3c23f440af5925044137cf69807312b7825bf172e960"
 
     home = System.get_env("HOME")
 
     # mock home dir to test
     System.put_env("HOME", Path.join(System.cwd!, "test"))
     
-    {:ok, request} = Signature.V4.sign("us-east-1", "s3", request)
-    
-    IO.inspect request
+    {:ok, request} = Signature.V4.sign(request, "us-east-1", "s3")
 
     # bring back home
     System.put_env("HOME", home)
@@ -84,7 +83,7 @@ defmodule AwsTest do
     request = %Aws.Http.Request
     {
         :method => "POST",
-        :uri => "/",
+        :uri => %URI{:path => "/"},
         :headers => [{"Host", "iam.amazonaws.com"},
                      {"Content-Type", "application/x-www-form-urlencoded; charset=utf-8"},
                      {"X-Amz-Date", "20110909T233600Z"}],
@@ -129,6 +128,31 @@ defmodule AwsTest do
 
     # bring back home
     System.put_env("HOME", home)
+  end
+
+  test "Signature example" do
+    System.put_env("AWS_ACCESS_KEY_ID", "AKIAIOSFODNN7EXAMPLE")
+    System.put_env("AWS_SECRET_ACCESS_KEY", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+
+    request = %Aws.Http.Request
+    {
+        :method => "GET",
+        :uri => %URI
+        {
+            :path => "/test.txt",
+            :host => "examplebucket.s3.amazonaws.com"
+        },
+        :headers => [{"Range", "bytes=0-9"},
+                     {"Host", "examplebucket.s3.amazonaws.com"},
+                     {"x-amz-content-sha256",
+                      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+                     {"x-amz-date", "20130524T000000Z"}]
+    }
+
+    signed_request = Signature.V4.sign(request, "us-east-1", "s3")
+    
+    System.delete_env("AWS_ACCESS_KEY_ID")
+    System.delete_env("AWS_SECRET_ACCESS_KEY")
   end
   
 end
