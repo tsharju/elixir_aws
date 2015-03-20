@@ -1,11 +1,13 @@
 defmodule Aws.Http do
+
+  alias Aws.Auth.Signature
   
   defmodule Request do
     defstruct method: nil, uri: %URI{}, headers: [], payload: "", query: ""
     @type t :: %Request{method: binary, uri: URI.t, headers: List.t, payload: binary, query: binary}
   end
   
-  def request(protocol, endpoint_prefix, api_version, signature_version, args, spec) do
+  def request("rest-xml", endpoint_prefix, api_version, signature_version, args, spec) do
     IO.inspect binding()
     
     configs = Aws.Config.get()
@@ -19,10 +21,14 @@ defmodule Aws.Http do
         :uri => uri,
         :headers => [{"Host", uri.host}]
     }
-    {:ok, req} =  Aws.Auth.Signature.V4.sign(req, configs.region, endpoint_prefix)
+    {:ok, req} =  Signature.V4.sign(req, configs.region, endpoint_prefix)
     
     {:ok, status, _, ref} = :hackney.request(method(req.method), to_string(req.uri), req.headers, "", [])
     :hackney.body(ref)
+  end
+
+  def request(_, _, _, _, _, _) do
+    {:error, :protocol_not_implemented}
   end
   
   def render_uri_template(template, args) do
