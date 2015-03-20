@@ -1,8 +1,16 @@
 defmodule Aws.Services do
+
+  compile_services = Application.get_env(:elixir_aws, :compile_services, [])
+  |> Enum.into(HashSet.new)
   
   spec_path = Application.app_dir(:elixir_aws, "priv/aws")
   spec_dirs = File.ls!(spec_path)
   |> Enum.filter(fn name -> not String.contains?(name, ".json") end)
+  |> Enum.into(HashSet.new)
+  
+  if compile_services != [] do
+    spec_dirs = HashSet.intersection(compile_services, spec_dirs)
+  end
   
   Enum.each(spec_dirs,
     fn dir_name ->
@@ -30,16 +38,16 @@ defmodule Aws.Services do
         protocol = spec.metadata.protocol
         signature_version = spec.metadata.signatureVersion
 
-        @moduledoc ~s(#{service_name}\n\nAPI version: #{api_version})
-
+        @moduledoc "#{service_name}\n\nAPI version: #{api_version}"
+        
         # declare module functions according to the loaded spec
         Enum.each(spec.operations,
           fn {operation_name, operation_spec} ->
             fun_name = Mix.Utils.underscore(to_string(operation_name))
             |> String.to_atom
-
+            
             args = []
-
+            
             if operation_spec[:input] != nil do
               if operation_spec.input[:shape] != nil do
                 input_shape = spec.shapes[String.to_atom(operation_spec.input.shape)]
@@ -49,7 +57,7 @@ defmodule Aws.Services do
                 end
               end
             end
-
+            
             if operation_spec[:documentation] do
               @doc operation_spec.documentation
               |> Aws.Utils.strip_html_tags
