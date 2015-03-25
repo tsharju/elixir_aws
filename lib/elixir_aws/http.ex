@@ -4,12 +4,11 @@ defmodule Aws.Http do
   
   defmodule Request do
     defstruct method: nil, uri: %URI{}, headers: [], payload: "", query: ""
-    @type t :: %Request{method: binary, uri: URI.t, headers: List.t, payload: binary, query: binary}
+    @type t :: %Request{method: binary, uri: URI.t, headers: List.t,
+                        payload: binary, query: binary}
   end
   
   def request("rest-xml", endpoint_prefix, api_version, signature_version, args, spec) do
-    IO.inspect binding()
-    
     configs = Aws.Config.get()
     endpoint = Aws.Endpoints.get(configs.region, endpoint_prefix)
     uri = URI.parse(endpoint.uri)
@@ -23,8 +22,11 @@ defmodule Aws.Http do
     }
     {:ok, req} =  Signature.V4.sign(req, configs.region, endpoint_prefix)
     
-    {:ok, status, _, ref} = :hackney.request(method(req.method), to_string(req.uri), req.headers, "", [])
-    :hackney.body(ref)
+    {:ok, status, _, ref} = :hackney.request(method(req.method), to_string(req.uri),
+                                             req.headers, "", [])
+    {:ok, body} = :hackney.body(ref)
+
+    Aws.Output.RestXml.decode(spec.output, body)
   end
 
   def request(_, _, _, _, _, _) do

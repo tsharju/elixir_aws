@@ -1,5 +1,5 @@
 defmodule Aws.Services do
-
+  
   compile_services = Application.get_env(:elixir_aws, :compile_services, [])
   |> Enum.into(HashSet.new)
   
@@ -7,9 +7,9 @@ defmodule Aws.Services do
   spec_dirs = File.ls!(spec_path)
   |> Enum.filter(fn name -> not String.contains?(name, ".json") end)
   |> Enum.into(HashSet.new)
-  
-  if compile_services != [] do
-    spec_dirs = HashSet.intersection(compile_services, spec_dirs)
+
+  if HashSet.size(compile_services) > 0 do
+    spec_dirs = HashSet.intersection(spec_dirs, compile_services)
   end
   
   Enum.each(spec_dirs,
@@ -18,7 +18,7 @@ defmodule Aws.Services do
       |> String.to_atom
 
       defmodule Module.concat(__MODULE__, mod_name) do
-
+        
         mod_spec_path = Path.join(spec_path, dir_name)
         mod_spec_files = File.ls!(mod_spec_path)
         
@@ -57,11 +57,19 @@ defmodule Aws.Services do
                 end
               end
             end
+
+            if operation_spec[:output] != nil do
+              if operation_spec.output[:shape] != nil do
+              end
+            end
             
             if operation_spec[:documentation] do
               @doc operation_spec.documentation
               |> Aws.Utils.strip_html_tags
             end
+
+            module_name = Aws.Services.S3.Shapes.ListBucketsOutput
+            
             def unquote(fun_name)(unquote_splicing(args)) do
               args = binding()
               
@@ -70,7 +78,7 @@ defmodule Aws.Services do
               api_version = unquote(api_version)
               signature_version = unquote(signature_version)
               op_spec = unquote(Macro.escape(operation_spec))
-
+              |> put_in([:output], %unquote(module_name){})
               Aws.Http.request(protocol, endpoint_prefix, api_version,
                                signature_version, args, op_spec)
             end
