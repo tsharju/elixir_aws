@@ -52,6 +52,10 @@ defmodule Aws.Endpoints do
     String.starts_with?(region, string)
   end
   
+  defp check_constraint([region, "notStartsWith", string]) do
+    not String.starts_with?(region, string)
+  end
+  
   defp check_constraint([region, "equals", value]) do
     region == value
   end
