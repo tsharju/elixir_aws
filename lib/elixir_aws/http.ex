@@ -24,10 +24,15 @@ defmodule Aws.Http do
     {:ok, status, _, ref} = :hackney.request(method(req.method), to_string(req.uri),
                                              req.headers, "", [])
     {:ok, body} = :hackney.body(ref)
-    
-    Aws.Output.RestXml.decode(spec.output, body)
-  end
 
+    case body do
+      "" ->
+        :ok
+      data ->
+        {:ok, Aws.Output.RestXml.decode(spec.output, data)}
+    end
+  end
+  
   def request(_, _, _, _, _, _) do
     {:error, :protocol_not_implemented}
   end
