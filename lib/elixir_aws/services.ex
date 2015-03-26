@@ -80,12 +80,9 @@ defmodule Aws.Services do
               endpoint_prefix = unquote(endpoint_prefix)
               api_version = unquote(api_version)
               signature_version = unquote(signature_version)
-              op_spec = unquote(Macro.escape(operation_spec))
               output_module = unquote(output_module)
-
-              if output_module != nil do
-                op_spec = put_in(op_spec, [:output], output_module)
-              end
+              op_spec = unquote(Macro.escape(operation_spec))
+              |> put_in([:output], output_module)
               
               Aws.Http.request(protocol, endpoint_prefix, api_version,
                                signature_version, args, op_spec)
