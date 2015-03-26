@@ -42,7 +42,7 @@ defmodule Aws.Output.RestXml do
     xpath = "//" <> to_string(name) <> "/text()[1]"
     [text] = :xmerl_xpath.string(String.to_char_list(xpath), xml)
     value = xmlText(text, :value)
-    {name, value}
+    {name, to_string(value)}
   end
   
   def decode(name, %{:type => type} = shape, xml) do
