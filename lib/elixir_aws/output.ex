@@ -26,7 +26,7 @@ defmodule Aws.Output.RestXml do
     [element] = :xmerl_xpath.string(String.to_char_list(xpath), xml)
     content = xmlElement(element, :content)
     content = Enum.filter(content, &Record.is_record(&1, :xmlElement))
-    |> Enum.map(&decode(:Bucket, member.shape.__struct__, &1))
+    |> Enum.map(&decode(member.name, member.shape.__struct__, &1))
     {name, content}
   end
   

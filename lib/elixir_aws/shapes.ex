@@ -45,6 +45,7 @@ defmodule Aws.Shapes.Macros do
       |> String.to_atom
       member_mod = Module.concat([:'Aws', :'Services', service, :'Shapes', member_shape])
       member = put_in(member_spec, [:shape], member_mod)
+      |> put_in([:name], member_shape)
 
       flattened = Map.get(member_spec, :flattened, false)
       
