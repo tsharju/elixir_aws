@@ -22,7 +22,9 @@ defmodule Aws.Shapes.Macros do
         [],
         fn {k, v} ->
           if Map.has_key?(v, :shape) do
-            mod = Module.concat([:'Aws', :'Services', service, :'Shapes', k])
+            shape = Map.get(v, :shape)
+            |> String.to_atom
+            mod = Module.concat([:'Aws', :'Services', service, :'Shapes', shape])
             v = put_in(v, [:shape], mod)
           end
           {k, v}
@@ -47,6 +49,17 @@ defmodule Aws.Shapes.Macros do
       flattened = Map.get(member_spec, :flattened, false)
       
       [type: :list, member: member, flattened: flattened]
+    end
+  end
+
+  defmacro shape_timestamp(service, shape_spec) do
+    quote do
+      service = unquote(service)
+      shape_spec = unquote(shape_spec)
+
+      format = Map.get(shape_spec, :'timestampFormat', nil)
+
+      [type: :timestamp, 'timestampFormat': format]
     end
   end
   
@@ -99,6 +112,8 @@ defmodule Aws.Shapes do
                   defstruct Aws.Shapes.Macros.shape_list(service_name, shape_spec)
                 "string" ->
                   defstruct Aws.Shapes.Macros.shape_string(service_name, shape_spec)
+                "timestamp" ->
+                  defstruct Aws.Shapes.Macros.shape_timestamp(service_name, shape_spec)
                 type ->
                   IO.puts "Warning: ignoring unknown shape type: #{type}"
               end

@@ -147,13 +147,22 @@ defmodule AwsTest do
 
   test "Parse XML" do
     data = ~s"""
-             <?xml version=\"1.0\" encoding=\"UTF-8\"?>
-             <ListAllMyBucketsResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\">
+             <?xml version="1.0" encoding="UTF-8"?>
+             <ListAllMyBucketsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
                <Owner>
                  <ID>ownerid</ID>
                  <DisplayName>name</DisplayName>
                </Owner>
-               <Buckets/>
+               <Buckets>
+                 <Bucket>
+                   <Name>bucket1</Name>
+                   <CreationDate>2015-03-26T09:49:14.000Z</CreationDate>
+                 </Bucket>
+                 <Bucket>
+                   <Name>bucket2</Name>
+                   <CreationDate>2015-03-26T09:49:14.000Z</CreationDate>
+                 </Bucket>
+               </Buckets>
              </ListAllMyBucketsResult>
              """
     shape = %Aws.Services.S3.Shapes.ListBucketsOutput{
@@ -164,7 +173,10 @@ defmodule AwsTest do
     
     output = Aws.Output.RestXml.decode(shape, data)
 
-    assert output[:Buckets] == []
+    buckets = ['Bucket': ['CreationDate': '2015-03-26T09:49:14.000Z', 'Name': "bucket1"],
+               'Bucket': ['CreationDate': '2015-03-26T09:49:14.000Z', 'Name': "bucket2"]]
+    assert output[:Buckets] == buckets
+      
     assert output[:Owner] == ['DisplayName': "name", 'ID': "ownerid"]
   end
   
