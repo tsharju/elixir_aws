@@ -173,8 +173,8 @@ defmodule AwsTest do
     
     output = Aws.Output.RestXml.decode(shape, data)
 
-    buckets = ['Bucket': ['CreationDate': '2015-03-26T09:49:14.000Z', 'Name': "bucket1"],
-               'Bucket': ['CreationDate': '2015-03-26T09:49:14.000Z', 'Name': "bucket2"]]
+    buckets = ['Bucket': ['CreationDate': "2015-03-26T09:49:14.000Z", 'Name': "bucket1"],
+               'Bucket': ['CreationDate': "2015-03-26T09:49:14.000Z", 'Name': "bucket2"]]
     assert output[:Buckets] == buckets
       
     assert output[:Owner] == ['DisplayName': "name", 'ID': "ownerid"]
