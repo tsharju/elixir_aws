@@ -137,6 +137,8 @@ defmodule Aws.Shapes do
                   defstruct Aws.Shapes.Macros.shape_bool(service_name, shape_spec)
                 "integer" ->
                   defstruct Aws.Shapes.Macros.shape_integer(service_name, shape_spec)
+                "long" ->
+                  defstruct Aws.Shapes.Macros.shape_integer(service_name, shape_spec)
                 type ->
                   IO.puts "Warning: ignoring unknown shape type: #{type}"
               end
