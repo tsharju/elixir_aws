@@ -144,5 +144,28 @@ defmodule AwsTest do
     System.delete_env("AWS_ACCESS_KEY_ID")
     System.delete_env("AWS_SECRET_ACCESS_KEY")
   end
+
+  test "Parse XML" do
+    data = ~s"""
+             <?xml version=\"1.0\" encoding=\"UTF-8\"?>
+             <ListAllMyBucketsResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\">
+               <Owner>
+                 <ID>ownerid</ID>
+                 <DisplayName>name</DisplayName>
+               </Owner>
+               <Buckets/>
+             </ListAllMyBucketsResult>
+             """
+    shape = %Aws.Services.S3.Shapes.ListBucketsOutput{
+                    members: [Buckets: %{shape: Aws.Services.S3.Shapes.Buckets},
+                              Owner: %{shape: Aws.Services.S3.Shapes.Owner}],
+                    required: [],
+                    type: :structure}
+    
+    output = Aws.Output.RestXml.decode(shape, data)
+
+    assert output[:Buckets] == []
+    assert output[:Owner] == ['DisplayName': "name", 'ID': "ownerid"]
+  end
   
 end

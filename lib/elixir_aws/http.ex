@@ -21,11 +21,10 @@ defmodule Aws.Http do
         :headers => [{"Host", uri.host}]
     }
     {:ok, req} =  Signature.V4.sign(req, configs.region, endpoint_prefix)
-    
     {:ok, status, _, ref} = :hackney.request(method(req.method), to_string(req.uri),
                                              req.headers, "", [])
     {:ok, body} = :hackney.body(ref)
-
+    
     Aws.Output.RestXml.decode(spec.output, body)
   end
 
