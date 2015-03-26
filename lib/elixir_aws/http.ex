@@ -29,7 +29,7 @@ defmodule Aws.Http do
       "" ->
         :ok
       data ->
-        {:ok, Aws.Output.RestXml.decode(spec.output, data)}
+        {:ok, Aws.Output.RestXml.decode(spec.output.__struct__, data)}
     end
   end
   

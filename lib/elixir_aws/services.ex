@@ -58,8 +58,13 @@ defmodule Aws.Services do
               end
             end
 
+            output_module = nil
+            
             if operation_spec[:output] != nil do
               if operation_spec.output[:shape] != nil do
+                output = operation_spec.output.shape
+                |> String.to_atom
+                output_module = Module.concat([__MODULE__, :'Shapes', output])
               end
             end
             
@@ -67,8 +72,6 @@ defmodule Aws.Services do
               @doc operation_spec.documentation
               |> Aws.Utils.strip_html_tags
             end
-
-            module_name = Aws.Services.S3.Shapes.ListBucketsOutput
             
             def unquote(fun_name)(unquote_splicing(args)) do
               args = binding()
@@ -78,7 +81,12 @@ defmodule Aws.Services do
               api_version = unquote(api_version)
               signature_version = unquote(signature_version)
               op_spec = unquote(Macro.escape(operation_spec))
-              |> put_in([:output], %unquote(module_name){})
+              output_module = unquote(output_module)
+
+              if output_module != nil do
+                op_spec = put_in(op_spec, [:output], output_module)
+              end
+              
               Aws.Http.request(protocol, endpoint_prefix, api_version,
                                signature_version, args, op_spec)
             end

@@ -23,18 +23,26 @@ defmodule Aws.Output.RestXml do
   
   def decode(name, %{:type => :list, :member => member} = shape, xml) do
     xpath = "//" <> to_string(name)
-    [element] = :xmerl_xpath.string(String.to_char_list(xpath), xml)
-    content = xmlElement(element, :content)
-    content = Enum.filter(content, &Record.is_record(&1, :xmlElement))
-    |> Enum.map(&decode(member.name, member.shape.__struct__, &1))
-    {name, content}
+    case :xmerl_xpath.string(String.to_char_list(xpath), xml) do
+      [element] ->
+        content = xmlElement(element, :content)
+        content = Enum.filter(content, &Record.is_record(&1, :xmlElement))
+        |> Enum.map(&decode(member.name, member.shape.__struct__, &1))
+        {name, content}
+      [] ->
+        {name, nil}
+    end
   end
   
   def decode(name, %{:type => :string} = shape, xml) do
     xpath = "//" <> to_string(name) <> "/text()[1]"
-    [text] = :xmerl_xpath.string(String.to_char_list(xpath), xml)
-    value = xmlText(text, :value)
-    {name, to_string(value)}
+    case :xmerl_xpath.string(String.to_char_list(xpath), xml) do
+      [text] ->
+        value = xmlText(text, :value)
+        {name, to_string(value)}
+      [] ->
+        {name, nil}
+    end
   end
 
   def decode(name, %{:type => :timestamp} = shape, xml) do
@@ -43,6 +51,16 @@ defmodule Aws.Output.RestXml do
     [text] = :xmerl_xpath.string(String.to_char_list(xpath), xml)
     value = xmlText(text, :value)
     {name, to_string(value)}
+  end
+
+  def decode(name, %{:type => :boolean} = shape, xml) do
+    # TODO
+    {name, false}
+  end
+
+  def decode(name, %{:type => :integer} = shape, xml) do
+    # TODO
+    {name, 0}
   end
   
   def decode(name, %{:type => type} = shape, xml) do

@@ -63,6 +63,24 @@ defmodule Aws.Shapes.Macros do
       [type: :timestamp, 'timestampFormat': format]
     end
   end
+
+  defmacro shape_bool(service, shape_spec) do
+    quote do
+      service = unquote(service)
+      shape_spec = unquote(shape_spec)
+
+      [type: :boolean]
+    end
+  end
+
+  defmacro shape_integer(service, shape_spec) do
+    quote do
+      service = unquote(service)
+      shape_spec = unquote(shape_spec)
+
+      [type: :integer]
+    end
+  end
   
 end
 
@@ -115,6 +133,10 @@ defmodule Aws.Shapes do
                   defstruct Aws.Shapes.Macros.shape_string(service_name, shape_spec)
                 "timestamp" ->
                   defstruct Aws.Shapes.Macros.shape_timestamp(service_name, shape_spec)
+                "boolean" ->
+                  defstruct Aws.Shapes.Macros.shape_bool(service_name, shape_spec)
+                "integer" ->
+                  defstruct Aws.Shapes.Macros.shape_integer(service_name, shape_spec)
                 type ->
                   IO.puts "Warning: ignoring unknown shape type: #{type}"
               end
