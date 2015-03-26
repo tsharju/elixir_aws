@@ -54,13 +54,20 @@ defmodule Aws.Output.RestXml do
   end
 
   def decode(name, %{:type => :boolean} = shape, xml) do
-    # TODO
-    {name, false}
+    xpath = "//" <> to_string(name) <> "/text()[1]"
+    [text] = :xmerl_xpath.string(String.to_char_list(xpath), xml)
+    value = xmlText(text, :value)
+    {name, value == 'true'}
   end
 
   def decode(name, %{:type => :integer} = shape, xml) do
-    # TODO
-    {name, 0}
+    xpath = "//" <> to_string(name) <> "/text()[1]"
+    [text] = :xmerl_xpath.string(String.to_char_list(xpath), xml)
+    {value, ""} = xmlText(text, :value)
+    |> to_string
+    |> Integer.parse
+    
+    {name, value}
   end
   
   def decode(name, %{:type => type} = shape, xml) do
