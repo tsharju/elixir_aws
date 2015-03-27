@@ -16,7 +16,7 @@ defmodule Aws.Shapes.Macros do
     quote do
       service = unquote(service)
       shape_spec = unquote(shape_spec)
-
+      
       keys = Map.keys(shape_spec) |> Enum.into(HashSet.new)
       default_keys = [:type, :members, :required] |> Enum.into(HashSet.new)
       
@@ -61,6 +61,21 @@ defmodule Aws.Shapes.Macros do
     end
   end
 
+  defmacro shape_map(service, shape_spec) do
+    quote do
+      service = unquote(service)
+      shape_spec = unquote(shape_spec)
+
+      key_shape = get_in(shape_spec, [:key, :shape])
+      key_mod = Module.concat([:'Aws', :'Services', service, :'Shapes', key_shape])
+
+      value_shape = get_in(shape_spec, [:value, :shape])
+      value_mod = Module.concat([:'Aws', :'Services', service, :'Shapes', value_shape])
+
+      [type: :map, key: key_mod, value: value_mod]
+    end
+  end
+  
   defmacro shape_timestamp(service, shape_spec) do
     quote do
       service = unquote(service)
@@ -135,6 +150,8 @@ defmodule Aws.Shapes do
               case shape_spec.type do
                 "structure" ->
                   defstruct Aws.Shapes.Macros.shape_struct(service_name, shape_spec)
+                "map" ->
+                  defstruct Aws.Shapes.Macros.shape_map(service_name, shape_spec)
                 "list" ->
                   defstruct Aws.Shapes.Macros.shape_list(service_name, shape_spec)
                 "string" ->

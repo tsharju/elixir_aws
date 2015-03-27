@@ -29,16 +29,12 @@ defmodule Aws.Http do
         :payload => payload
     }
     {:ok, req} =  Signature.V4.sign(req, configs.region, endpoint_prefix)
-    {:ok, status, _, ref} = :hackney.request(method(req.method), to_string(req.uri),
-                                             req.headers, req.payload, [])
+    {:ok, status, resp_headers, ref} = :hackney.request(method(req.method),
+                                                        to_string(req.uri),
+                                                        req.headers, req.payload, [])
     {:ok, body} = :hackney.body(ref)
-
-    case body do
-      "" ->
-        :ok
-      data ->
-        {:ok, Aws.Output.RestXml.decode(spec.output.__struct__, data)}
-    end
+    
+    {:ok, Aws.Output.RestXml.decode(spec.output.__struct__, body, resp_headers)}
   end
   
   def request(_, _, _, _, _, _) do

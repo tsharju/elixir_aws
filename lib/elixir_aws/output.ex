@@ -5,10 +5,33 @@ defmodule Aws.Output.RestXml do
   Record.defrecord :xmlText, Record.extract(:xmlText, from_lib: "xmerl/include/xmerl.hrl")
   Record.defrecord :xmlElement, Record.extract(:xmlElement, from_lib: "xmerl/include/xmerl.hrl")
   
-  def decode(shape, data) when is_binary(data) do
-    decode(shape, parse_xml(data))
+  def decode(shape, data, headers) when is_binary(data) do
+    xml = nil
+    payload = shape.opts[:payload]
+    if payload != nil do
+      payload = String.to_atom(payload)
+    else
+      xml = parse_xml(data)
+    end
+    
+    output = Enum.map(
+      shape.members,
+      fn
+        {name, %{:location => location} = member} when location == "header" ->
+          {_, value} = List.keyfind(headers, member.locationName, 0, {nil, nil})
+          {name, value}
+        {name, %{:location => location} = member} when location == "headers" ->
+          {name, Enum.filter(headers,
+                fn {key, value} ->
+                  String.starts_with?(value, member.locationName)
+                end)}
+        {name, _member} when name == payload ->
+          {name, data}
+        {name, %{:shape => shape}} ->
+          decode({name, %{:shape => shape}}, xml)
+      end)
   end
-
+  
   def decode(%{:members => members} = _shape, xml) do
     Enum.into(members, [], &decode(&1, xml))
   end
@@ -38,8 +61,8 @@ defmodule Aws.Output.RestXml do
     xpath = "//" <> to_string(name) <> "/text()[1]"
     case :xmerl_xpath.string(String.to_char_list(xpath), xml) do
       [text] ->
-        value = xmlText(text, :value)
-        {name, to_string(value)}
+        value = xmlText(text, :value) |> to_string
+        {name, value}
       [] ->
         {name, nil}
     end
