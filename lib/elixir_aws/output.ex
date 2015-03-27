@@ -1,3 +1,7 @@
+defmodule Aws.Output.Query do
+  
+end
+
 defmodule Aws.Output.RestXml do
 
   require Record
@@ -39,7 +43,7 @@ defmodule Aws.Output.RestXml do
   def decode({name, %{:shape => shape}}, xml) do
     decode(name, shape.__struct__, xml)
   end
-
+  
   def decode(name, %{:type => :structure} = shape, xml) do
     {name, Enum.into(shape.members, [], &decode(&1, xml))}
   end
@@ -67,7 +71,7 @@ defmodule Aws.Output.RestXml do
         {name, nil}
     end
   end
-
+  
   def decode(name, %{:type => :timestamp} = shape, xml) do
     # TODO: handle date formats
     xpath = "//" <> to_string(name) <> "/text()[1]"
@@ -79,7 +83,7 @@ defmodule Aws.Output.RestXml do
         {name, nil}
     end
   end
-
+  
   def decode(name, %{:type => :boolean} = shape, xml) do
     xpath = "//" <> to_string(name) <> "/text()[1]"
     [text] = :xmerl_xpath.string(String.to_char_list(xpath), xml)

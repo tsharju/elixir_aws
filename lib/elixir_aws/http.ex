@@ -36,6 +36,32 @@ defmodule Aws.Http do
     
     {:ok, Aws.Output.RestXml.decode(spec.output.__struct__, body, resp_headers)}
   end
+
+  def request("query", endpoint_prefix, api_version, signature_version, args, spec) do
+    configs = Aws.Config.get()
+    endpoint = Aws.Endpoints.get(configs.region, endpoint_prefix)
+    uri = URI.parse(endpoint.uri)
+    uri = %{uri | :path => spec.http.requestUri |> render_uri_template(args)}
+
+    params = %{"Action" => spec.name,
+               "Version" => api_version}
+    
+    req = %Request
+    {
+        :method => spec.http.method,
+        :uri => uri,
+        :headers => [{"Host", uri.host},
+                     {"Content-type", "application/x-www-form-urlencoded; charset=utf-8"}],
+        :payload => URI.encode_query(params)
+    }
+    {:ok, req} = Signature.V4.sign(req, configs.region, endpoint_prefix)
+    {:ok, status, resp_headers, ref} = :hackney.request(method(req.method),
+                                                        to_string(req.uri),
+                                                        req.headers, req.payload, [])
+    {:ok, body} = :hackney.body(ref)
+    
+    body
+  end
   
   def request(_, _, _, _, _, _) do
     {:error, :protocol_not_implemented}
