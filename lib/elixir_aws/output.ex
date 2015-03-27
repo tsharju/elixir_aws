@@ -48,9 +48,13 @@ defmodule Aws.Output.RestXml do
   def decode(name, %{:type => :timestamp} = shape, xml) do
     # TODO: handle date formats
     xpath = "//" <> to_string(name) <> "/text()[1]"
-    [text] = :xmerl_xpath.string(String.to_char_list(xpath), xml)
-    value = xmlText(text, :value)
-    {name, to_string(value)}
+    case :xmerl_xpath.string(String.to_char_list(xpath), xml) do
+      [text] ->
+        value = xmlText(text, :value)
+        {name, to_string(value)}
+      [] ->
+        {name, nil}
+    end
   end
 
   def decode(name, %{:type => :boolean} = shape, xml) do
@@ -62,12 +66,16 @@ defmodule Aws.Output.RestXml do
 
   def decode(name, %{:type => :integer} = shape, xml) do
     xpath = "//" <> to_string(name) <> "/text()[1]"
-    [text] = :xmerl_xpath.string(String.to_char_list(xpath), xml)
-    {value, ""} = xmlText(text, :value)
-    |> to_string
-    |> Integer.parse
-    
-    {name, value}
+    case :xmerl_xpath.string(String.to_char_list(xpath), xml) do
+      [text] ->
+        {value, ""} = xmlText(text, :value)
+        |> to_string
+        |> Integer.parse
+        
+        {name, value}
+      [] ->
+        {name, nil}
+    end
   end
   
   def decode(name, %{:type => type} = shape, xml) do

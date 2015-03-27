@@ -16,6 +16,9 @@ defmodule Aws.Shapes.Macros do
     quote do
       service = unquote(service)
       shape_spec = unquote(shape_spec)
+
+      keys = Map.keys(shape_spec) |> Enum.into(HashSet.new)
+      default_keys = [:type, :members, :required] |> Enum.into(HashSet.new)
       
       members = shape_spec[:members]
       |> Enum.into(
@@ -30,8 +33,13 @@ defmodule Aws.Shapes.Macros do
           {k, v}
         end)
       required = Map.get(shape_spec, :required, [])
+      |> Enum.map(&String.to_atom(&1))
+
+      # add optionals
+      opts = HashSet.difference(keys, default_keys)
+      |> Enum.map(fn key -> {key, Map.get(shape_spec, key)} end)
       
-      [type: :structure, members: members, required: required]
+      [type: :structure, members: members, required: required, opts: opts]
     end
   end
 

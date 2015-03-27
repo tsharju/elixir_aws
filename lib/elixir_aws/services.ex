@@ -50,14 +50,18 @@ defmodule Aws.Services do
             
             if operation_spec[:input] != nil do
               if operation_spec.input[:shape] != nil do
-                input_shape = spec.shapes[String.to_atom(operation_spec.input.shape)]
-                if input_shape[:required] != nil do
-                  args = Enum.map(input_shape.required, &String.to_atom(&1))
-                  |> Enum.map(&Macro.var(&1, nil))
+                input_shape_mod = Module.concat([__MODULE__,
+                                                 :'Shapes',
+                                                 String.to_atom(operation_spec.input.shape)])
+                input_shape = input_shape_mod.__struct__
+                operation_spec = put_in(operation_spec, [:input, :shape], input_shape)
+                args = Enum.map(input_shape.required, &Macro.var(&1, nil))
+                if input_shape.opts != [] do
+                  args = args ++ [Macro.var(:opts, nil)]
                 end
               end
             end
-
+            
             output_module = nil
             
             if operation_spec[:output] != nil do
@@ -88,7 +92,7 @@ defmodule Aws.Services do
                                signature_version, args, op_spec)
             end
           end)
-        end
+      end
     end)
   
 end

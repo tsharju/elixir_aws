@@ -13,16 +13,24 @@ defmodule Aws.Http do
     endpoint = Aws.Endpoints.get(configs.region, endpoint_prefix)
     uri = URI.parse(endpoint.uri)
     uri = %{uri | :path => spec.http.requestUri |> render_uri_template(args)}
+
+    payload = ""
+    if args[:opts] != nil do
+      if args[:opts][:payload] != nil do
+        payload = args[:opts][:payload]
+      end
+    end
     
     req = %Request
     {
         :method => spec.http.method,
         :uri => uri,
-        :headers => [{"Host", uri.host}]
+        :headers => [{"Host", uri.host}],
+        :payload => payload
     }
     {:ok, req} =  Signature.V4.sign(req, configs.region, endpoint_prefix)
     {:ok, status, _, ref} = :hackney.request(method(req.method), to_string(req.uri),
-                                             req.headers, "", [])
+                                             req.headers, req.payload, [])
     {:ok, body} = :hackney.body(ref)
 
     case body do
